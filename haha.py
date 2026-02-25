@@ -130,6 +130,10 @@ def call_shopee_api(links_batch, sub_ids_dict):
     except Exception as e:
         return []
 
+# ===== GIAO DIỆN TABS =====
+tab2, tab2 = st.tabs(["📋 Chuyển đổi danh sách Link", "📝 Chuyển đổi bài viết (Content)"])
+
+
 
 # ================= TAB 2: CHUYỂN ĐỔI CONTENT =================
 with tab2:
@@ -172,8 +176,6 @@ with tab2:
                 
                 # --- Thay đổi: Dùng st.code để có nút copy ---
                 st.code(final_content, language="markdown")
-
-
 
 
 
