@@ -132,80 +132,125 @@ def call_shopee_api(links_batch, sub_ids_dict):
 
 # ===== GIAO DIỆN TABS =====
 tab1, tab2 = st.tabs(["📋 Chuyển đổi danh sách Link", "📝 Chuyển đổi bài viết (Content)"])
-
-# ================= TAB 1: DANH SÁCH LINK =================
 with tab1:
 
-    # ===== CSS giao diện giống muangay.info =====
+    # ===== CSS giống 100% container HTML =====
     st.markdown("""
     <style>
 
-    /* Ẩn label mặc định */
-    label[data-testid="stWidgetLabel"] {
-        display: none;
+    .container-box {
+        max-width: 800px;
+        margin: auto;
+        background: #ffffff;
+        padding: 25px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
     }
 
-    /* Text area */
+    .container-box h2 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .processed-text p {
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    .textarea-wrapper {
+        position: relative;
+    }
+
     textarea {
-        border-radius: 12px !important;
-        border: 1px solid #e5e7eb !important;
-        padding: 14px !important;
+        width: 100% !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        padding: 10px !important;
         font-size: 14px !important;
-        background: #ffffff !important;
     }
 
-    textarea:focus {
-        border: 1px solid #2563eb !important;
-        box-shadow: 0 0 0 1px #2563eb !important;
+    .outside-button {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        background: #f1f1f1;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
     }
 
-    /* Button */
+    .sub-id-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+
+    .sub-id-container input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
     div.stButton > button {
         width: 100%;
-        border-radius: 10px;
-        height: 45px;
-        font-weight: 600;
-        font-size: 15px;
-        border: none;
+        background-color: #007bff;
         color: white;
-        background: linear-gradient(90deg, #2563eb, #1d4ed8);
+        border: none;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 15px;
+        font-weight: bold;
     }
 
     div.stButton > button:hover {
-        background: linear-gradient(90deg, #1d4ed8, #1e40af);
+        background-color: #0056b3;
     }
 
-    /* Code box */
-    pre {
-        border-radius: 12px !important;
-        border: 1px solid #e5e7eb !important;
-        padding: 15px !important;
-        font-size: 13px !important;
+    .footer {
+        margin-top: 30px;
+        font-size: 14px;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
 
-    # ===== Tiêu đề =====
-    st.markdown("### 🔗 Nhập danh sách link Shopee")
-    st.caption("Mỗi link một dòng")
+    # ===== Container =====
+    st.markdown('<div class="container-box">', unsafe_allow_html=True)
+
+    st.markdown("<h2>Chuyển URL Shopee & Lazada sang link rút gọn</h2>", unsafe_allow_html=True)
 
 
-    # ===== Input box =====
+    # ===== Input =====
+    st.markdown('<div class="processed-text"><p>Nhập vào nội dung:</p></div>', unsafe_allow_html=True)
+
     raw_input = st.text_area(
-        label="input_links_tab1",
-        height=220,
-        placeholder="https://shopee.vn/product/123...\nhttps://shopee.vn/product/456...",
-        key="input_links_tab1"
+        label="input_main",
+        height=200,
+        key="input_main"
     )
 
 
+    # ===== Sub ID =====
+    col1, col2 = st.columns(2)
+
+    with col1:
+        sub_id = st.text_input("Sub ID", value="sharezalo", key="sub_id")
+
+    with col2:
+        sub_id1 = st.text_input("Sub ID1", key="sub_id1")
+
+
     # ===== Button =====
-    if st.button("🚀 Chuyển Đổi Link", key="convert_button_tab1"):
+    if st.button("Chuyển đổi", key="convert_main"):
 
         if not raw_input.strip():
-            st.warning("Vui lòng nhập link!")
+
+            st.warning("Vui lòng nhập nội dung")
+
         else:
 
             input_links = [
@@ -216,20 +261,22 @@ with tab1:
 
             total_links = len(input_links)
 
-            st.info(f"Đã tìm thấy {total_links} links. Đang xử lý...")
-
+            progress_bar = st.progress(0)
 
             final_short_links = []
 
             batch_size = 50
 
-            progress_bar = st.progress(0)
+            sub_ids = {
+                "sub_id": sub_id,
+                "sub_id1": sub_id1
+            }
 
 
-            # ===== Giữ nguyên logic API của bạn =====
+            # ===== GIỮ NGUYÊN API LOGIC =====
             for i in range(0, total_links, batch_size):
 
-                chunk = input_links[i : i + batch_size]
+                chunk = input_links[i:i+batch_size]
 
                 results = call_shopee_api(chunk, sub_ids)
 
@@ -245,25 +292,53 @@ with tab1:
                             )
 
                 else:
-                    final_short_links.extend(["API_ERROR"] * len(chunk))
+
+                    final_short_links.extend(
+                        ["API_ERROR"] * len(chunk)
+                    )
 
 
                 progress_bar.progress(
-                    min((i + batch_size) / total_links, 1.0)
+                    min((i+batch_size)/total_links, 1.0)
                 )
 
                 time.sleep(0.1)
 
 
-            # ===== Hiển thị kết quả =====
-            st.success("Hoàn tất! Copy link bên dưới 👇")
-
             result_text = "\n".join(final_short_links)
 
-            st.code(
-                result_text,
-                language="text"
+
+            # ===== Result =====
+            st.markdown("<p><b>Nội dung chuyển đổi:</b></p>", unsafe_allow_html=True)
+
+            st.text_area(
+                label="result_box",
+                value=result_text,
+                height=200,
+                key="result_box"
             )
+
+
+            st.success("Hoàn tất!")
+
+
+    # ===== Footer =====
+    st.markdown("""
+    <ul style="margin-top: 50px;">
+        <li><b>Dùng ID khác</b>: https://muangay.info/convert?shopeeid=<span style="color:red;">17345060048</span>&lazadaid=<span style="color:red;">c.0w4XtoA</span></li>
+        <li><b>Tạo ShortURL Shopee</b>: Tạo ở đây</li>
+        <li><b>Thống kê</b>: Xem ở đây</li>
+    </ul>
+
+    <p style="text-align:right;">
+        Code by Nguyễn Hùng
+    </p>
+    """, unsafe_allow_html=True)
+
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+            
 # ================= TAB 2: CHUYỂN ĐỔI CONTENT =================
 with tab2:
     st.write("Dán toàn bộ bài viết quảng cáo vào đây. Tool sẽ tự tìm link `s.shopee.vn` và thay thế bằng link Affiliate của bạn.")
@@ -305,6 +380,7 @@ with tab2:
                 
                 # --- Thay đổi: Dùng st.code để có nút copy ---
                 st.code(final_content, language="markdown")
+
 
 
 
