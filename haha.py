@@ -1,65 +1,97 @@
 import streamlit as st
 import time, re
 
-# ===== CSS GIAO DIỆN GIỐNG HTML MẪU =====
+# ===== CSS giống HTML gốc =====
 st.markdown("""
 <style>
-.main-container {
-    max-width: 900px;
+
+.container {
+    max-width: 800px;
     margin: auto;
-    background: #ffffff;
+    background: white;
     padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    border-radius: 10px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
 }
 
-.title {
-    text-align:center;
-    font-size:28px;
-    font-weight:700;
-    margin-bottom:20px;
+.container h2 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.textarea-label {
-    font-weight:600;
-    margin-bottom:5px;
+.textarea-wrapper {
+    position: relative;
 }
 
-.subid-container {
-    display:flex;
-    gap:10px;
-    margin-top:10px;
-    margin-bottom:10px;
+textarea {
+    width: 100%;
+}
+
+.outside-button {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: #ff5722;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
 .convert-btn {
-    width:100%;
-    height:50px;
-    font-size:18px;
-    font-weight:600;
-    border-radius:8px;
+    width: 100%;
+    height: 45px;
+    font-size: 18px;
+    margin-top: 15px;
 }
 
-.result-box {
-    margin-top:20px;
+.sub-id-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
 }
+
+.result-area {
+    margin-top: 20px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 
 # ===== CONTAINER =====
-st.markdown('<div class="main-container">', unsafe_allow_html=True)
+st.markdown('<div class="container">', unsafe_allow_html=True)
 
-st.markdown('<div class="title">🔗 Chuyển URL Shopee & Lazada sang link Affiliate</div>', unsafe_allow_html=True)
+st.markdown("<h2>Chuyển URL Shopee & Lazada sang link rút gọn</h2>", unsafe_allow_html=True)
 
-# ===== INPUT SUBID =====
+
+# ===== INPUT CONTENT =====
+st.write("Nhập vào nội dung:")
+
+col_text, col_paste = st.columns([8,1])
+
+with col_text:
+    text_input = st.text_area(
+        "",
+        height=250,
+        key="input_text"
+    )
+
+with col_paste:
+    if st.button("Dán"):
+        st.info("Streamlit không hỗ trợ paste clipboard trực tiếp trên web")
+
+
+# ===== SUB ID =====
 col1, col2 = st.columns(2)
 
 with col1:
-    sub_id = st.text_input("Sub ID", value="sharezalo")
+    sub_id = st.text_input("", value="sharezalo", placeholder="Sub ID")
 
 with col2:
-    sub_id1 = st.text_input("Sub ID1")
+    sub_id1 = st.text_input("", placeholder="Sub ID1")
+
 
 sub_ids = {
     "sub_id": sub_id,
@@ -67,143 +99,96 @@ sub_ids = {
 }
 
 
-# ===== TABS =====
-tab1, tab2 = st.tabs(["📋 Chuyển đổi danh sách Link", "📝 Chuyển đổi bài viết (Content)"])
+# ===== BUTTON CONVERT =====
+convert = st.button("Chuyển đổi", use_container_width=True)
 
 
-# ================= TAB 1 =================
-with tab1:
+# ===== RESULT AREA =====
+if convert:
 
-    st.markdown("**Nhập danh sách link:**")
+    if not text_input.strip():
 
-    raw_input = st.text_area(
-        "",
-        height=250,
-        placeholder="https://shopee.vn/sp1...\nhttps://shopee.vn/sp2..."
-    )
+        st.warning("Vui lòng nhập nội dung")
 
-    if st.button("🚀 Chuyển đổi", use_container_width=True):
+    else:
 
-        if not raw_input.strip():
+        # tìm link shopee
+        found_links = re.findall(r'(https?://s\.shopee\.vn/[a-zA-Z0-9]+)', text_input)
 
-            st.warning("Vui lòng nhập link!")
+        unique_links = list(set(found_links))
+
+        if not unique_links:
+
+            st.warning("Không tìm thấy link Shopee")
 
         else:
 
-            input_links = [line.strip() for line in raw_input.split('\n') if line.strip()]
-            total_links = len(input_links)
+            st.info(f"Tìm thấy {len(unique_links)} link. Đang xử lý...")
 
-            st.info(f"Tìm thấy {total_links} link. Đang xử lý...")
-
-            final_short_links = []
+            link_mapping = {}
 
             batch_size = 50
+
             progress_bar = st.progress(0)
 
-            for i in range(0, total_links, batch_size):
+            for i in range(0, len(unique_links), batch_size):
 
-                chunk = input_links[i : i + batch_size]
+                chunk = unique_links[i : i + batch_size]
 
                 results = call_shopee_api(chunk, sub_ids)
 
-                if results:
+                if results and len(results) == len(chunk):
 
-                    for res in results:
+                    for original, res in zip(chunk, results):
 
                         if res.get('shortLink'):
-                            final_short_links.append(res['shortLink'])
-
-                        else:
-                            final_short_links.append(f"ERROR_{res.get('failCode')}")
-
-                else:
-                    final_short_links.extend(["API_ERROR"] * len(chunk))
+                            link_mapping[original] = res['shortLink']
 
 
-                progress_bar.progress(min((i + batch_size) / total_links, 1.0))
+                progress_bar.progress(min((i+batch_size)/len(unique_links),1.0))
 
                 time.sleep(0.1)
 
 
-            result_text = "\n".join(final_short_links)
+            final_text = text_input
 
-            st.success("✅ Hoàn tất!")
-
-            st.code(result_text, language="text")
-
+            for old, new in link_mapping.items():
+                final_text = final_text.replace(old, new)
 
 
-# ================= TAB 2 =================
-with tab2:
-
-    st.markdown("**Dán nội dung bài viết:**")
-
-    content_input = st.text_area(
-        "",
-        height=250,
-        placeholder="Siêu sale tại https://s.shopee.vn/xyz ..."
-    )
-
-    if st.button("🔄 Chuyển đổi", use_container_width=True):
-
-        if not content_input.strip():
-
-            st.warning("Vui lòng nhập nội dung!")
-
-        else:
-
-            found_links = re.findall(r'(https?://s\.shopee\.vn/[a-zA-Z0-9]+)', content_input)
-
-            unique_links = list(set(found_links))
+            st.success("Nội dung chuyển đổi:")
 
 
-            if not unique_links:
+            col_result, col_copy = st.columns([8,1])
 
-                st.warning("Không tìm thấy link Shopee!")
+            with col_result:
+                st.text_area(
+                    "",
+                    value=final_text,
+                    height=250,
+                    key="result_text"
+                )
 
-            else:
+            with col_copy:
 
-                st.info(f"Tìm thấy {len(unique_links)} link. Đang xử lý...")
+                st.code(final_text, language="text")
 
-
-                link_mapping = {}
-
-                batch_size = 50
-
-
-                for i in range(0, len(unique_links), batch_size):
-
-                    chunk = unique_links[i : i + batch_size]
-
-                    results = call_shopee_api(chunk, sub_ids)
-
-
-                    if results and len(results) == len(chunk):
-
-                        for original, res in zip(chunk, results):
-
-                            if res.get('shortLink'):
-
-                                link_mapping[original] = res['shortLink']
+                st.caption("Copy bằng nút góc phải")
 
 
 
-                final_content = content_input
+# ===== FOOTER giống HTML =====
+st.markdown("""
+<br><br>
+<ul>
+<li><b>Dùng ID khác</b>: https://muangay.info/convert?shopeeid=17345060048&lazadaid=c.0w4XtoA</li>
+<li><b>Tạo ShortURL Shopee</b>: /convert-shopee</li>
+<li><b>Thống kê</b>: /listurl</li>
+</ul>
 
-                count_success = 0
+<p style="text-align:right">Code by</p>
 
-
-                for old_link, new_link in link_mapping.items():
-
-                    final_content = final_content.replace(old_link, new_link)
-
-                    count_success += 1
-
-
-
-                st.success(f"✅ Đã thay {count_success}/{len(unique_links)} link")
-
-                st.code(final_content, language="markdown")
+""", unsafe_allow_html=True)
 
 
 st.markdown('</div>', unsafe_allow_html=True)
