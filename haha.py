@@ -131,9 +131,48 @@ def call_shopee_api(links_batch, sub_ids_dict):
         return []
 
 # ===== GIAO DIỆN TABS =====
-tab2 = st.tabs([ "📝 Chuyển đổi bài viết (Content)"])
+tab2, tab1 = st.tabs(["📋 Chuyển đổi danh sách Link", "📝 Chuyển đổi bài viết (Content)"])
 
+# ================= TAB 1: DANH SÁCH LINK =================
+with tab1:
+    st.write("Nhập danh sách link Shopee (mỗi link 1 dòng):")
+    raw_input = st.text_area("Input Links", height=200, placeholder="https://shopee.vn/sp1...\nhttps://shopee.vn/sp2...")
+    
+    if st.button("🚀 Chuyển Đổi Link", key="btn_tab1"):
+        if not raw_input.strip():
+            st.warning("Vui lòng nhập link!")
+        else:
+            input_links = [line.strip() for line in raw_input.split('\n') if line.strip()]
+            total_links = len(input_links)
+            st.info(f"Đã tìm thấy {total_links} links. Đang xử lý...")
 
+            final_short_links = []
+            
+            # Chia nhỏ thành từng chunk 50 link
+            batch_size = 50
+            progress_bar = st.progress(0)
+            
+            for i in range(0, total_links, batch_size):
+                chunk = input_links[i : i + batch_size]
+                results = call_shopee_api(chunk, sub_ids)
+                
+                if results:
+                    for res in results:
+                        if res.get('shortLink'):
+                            final_short_links.append(res['shortLink'])
+                        else:
+                            final_short_links.append(f"ERROR_FAIL_CODE_{res.get('failCode')}")
+                else:
+                    final_short_links.extend(["API_ERROR"] * len(chunk))
+                
+                progress_bar.progress(min((i + batch_size) / total_links, 1.0))
+                time.sleep(0.1)
+
+            st.success("Hoàn tất! Bấm vào nút Copy ở góc phải bên dưới 👇")
+            result_text = "\n".join(final_short_links)
+            
+            # --- Thay đổi: Dùng st.code để có nút copy ---
+            st.code(result_text, language="text")
 
 # ================= TAB 2: CHUYỂN ĐỔI CONTENT =================
 with tab2:
@@ -176,7 +215,6 @@ with tab2:
                 
                 # --- Thay đổi: Dùng st.code để có nút copy ---
                 st.code(final_content, language="markdown")
-
 
 
 
